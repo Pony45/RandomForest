@@ -41,7 +41,7 @@ if model is None:
 # Model original output terlalu besar (industrial scale)
 # Kita scale down supaya realistik untuk residential
 # ==========================================
-SCALING_FACTOR = 10  # Bahagi 10 untuk dapatkan kWh untuk rumah biasa
+SCALING_FACTOR = 15  # Bahagi 10 untuk dapatkan kWh untuk rumah biasa
 
 def scale_prediction(prediction):
     """Scale down prediction for Malaysian residential buildings"""
