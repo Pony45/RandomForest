@@ -93,7 +93,7 @@ with st.sidebar.expander("Performance Metrics", expanded=True):
 st.sidebar.markdown("---")
 
 # Inputs
-temp = st.sidebar.slider("🌡️ Temperature (°C)", 22, 35, 28)  # Range Malaysia
+temp = st.sidebar.slider("🌡️ Temperature (°C)", 19, 40, 28)  # Range Malaysia
 humidity = st.sidebar.slider("💧 Humidity (%)", 60, 95, 80)
 hour = st.sidebar.slider("⏰ Hour of Day", 0, 23, 14)
 dayofweek = st.sidebar.selectbox("📅 Day of Week", [0,1,2,3,4,5,6], format_func=lambda x: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][x])
