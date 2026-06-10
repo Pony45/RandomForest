@@ -54,6 +54,21 @@ is_weekend = 1 if dayofweek >= 5 else 0
 temp_humidity_interaction = temp * humidity / 100
 occupants_per_area = occupants / floor_area
 
+# Prediction dari model (kWh per jam)
+hourly_prediction = 2.5  # contoh
+
+# Convert ke bulan (andaikan 30 hari)
+daily_prediction = hourly_prediction * 24
+monthly_prediction = daily_prediction * 30
+yearly_prediction = monthly_prediction * 12
+
+# Tunjukkan dalam dashboard
+st.metric("Per Jam", f"{hourly_prediction:.2f} kWh")
+st.metric("Per Hari", f"{daily_prediction:.2f} kWh") 
+st.metric("Per Bulan", f"{monthly_prediction:.2f} kWh")
+st.metric("Per Tahun", f"{yearly_prediction:.2f} kWh")
+
+
 # Prepare features
 features_df = pd.DataFrame([[
     temp, humidity, hour, dayofweek, month, floor_area, occupants, retrofit,
@@ -118,6 +133,26 @@ with col1:
             ax1.set_ylim(0, max(values) + 2)
             
             st.pyplot(fig1)
+
+            unit = st.radio("Pilih Unit:", ["Per Jam", "Per Hari", "Per Bulan", "Per Tahun"])
+
+hourly_pred = model.predict(...)[0]
+
+if unit == "Per Jam":
+    display = hourly_pred
+    label = "kWh/jam"
+elif unit == "Per Hari":
+    display = hourly_pred * 24
+    label = "kWh/hari"
+elif unit == "Per Bulan":
+    display = hourly_pred * 24 * 30
+    label = "kWh/bulan"
+else:  # Per Tahun
+    display = hourly_pred * 24 * 365
+    label = "kWh/tahun"
+
+st.metric(f"Energy Consumption", f"{display:.2f} {label}")
+
             
             # ==========================================
             # GRAPH 2: DONUT CHART - Savings Percentage
