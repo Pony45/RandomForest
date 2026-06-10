@@ -2,22 +2,35 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
+import os
 
 st.set_page_config(page_title="M&V Dashboard", layout="wide")
-st.title("🏠 Energy Savings M&V Dashboard")
+st.title("🏠 AI-based Measurement & Verification (M&V) Dashboard")
+st.markdown("*Predict energy savings from residential building retrofits using Random Forest*")
 
+# Load model
 @st.cache_resource
 def load_model():
-    model = joblib.load('models/thesis_mv_random_forest.pkl')
-    with open('models/thesis_mv_features.txt', 'r') as f:
+    model_path = 'models/thesis_mv_random_forest.pkl'
+    features_path = 'models/thesis_mv_features.txt'
+    
+    if not os.path.exists(model_path):
+        st.error(f"❌ Model not found at {model_path}")
+        return None, None
+    
+    if not os.path.exists(features_path):
+        st.error(f"❌ Features file not found at {features_path}")
+        return None, None
+    
+    model = joblib.load(model_path)
+    with open(features_path, 'r') as f:
         features = [line.strip() for line in f.readlines()]
+    
     return model, features
 
-try:
-    model, FEATURES = load_model()
-    st.success("✅ Model loaded successfully!")
-except Exception as e:
-    st.error(f"❌ Error loading model: {e}")
+model, FEATURES = load_model()
+
+if model is None:
     st.stop()
 
 st.sidebar.header("📋 Building Parameters")
@@ -25,39 +38,74 @@ st.sidebar.header("📋 Building Parameters")
 temp = st.sidebar.slider("Temperature (°C)", -5, 45, 22)
 humidity = st.sidebar.slider("Humidity (%)", 20, 100, 60)
 hour = st.sidebar.slider("Hour of Day", 0, 23, 14)
+dayofweek = st.sidebar.selectbox("Day of Week", [0,1,2,3,4,5,6], format_func=lambda x: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][x])
+month = st.sidebar.selectbox("Month", list(range(1,13)))
 floor_area = st.sidebar.number_input("Floor Area (m²)", 30, 300, 90)
 occupants = st.sidebar.number_input("Number of Occupants", 1, 10, 3)
-retrofit = st.sidebar.selectbox("Retrofit Status", ["No (Baseline)", "Yes (Retrofitted)"])
+retrofit = st.sidebar.selectbox("Retrofit Status", [0,1], format_func=lambda x: "✅ Yes (Retrofitted)" if x==1 else "❌ No (Baseline)")
+
+# Feature engineering
+hour_sin = np.sin(2 * np.pi * hour / 24)
+hour_cos = np.cos(2 * np.pi * hour / 24)
+month_sin = np.sin(2 * np.pi * month / 12)
+month_cos = np.cos(2 * np.pi * month / 12)
+is_weekend = 1 if dayofweek >= 5 else 0
+temp_humidity_interaction = temp * humidity / 100
+occupants_per_area = occupants / floor_area
+
+# Prepare features
+features_df = pd.DataFrame([[
+    temp, humidity, hour, dayofweek, month, floor_area, occupants, retrofit,
+    hour_sin, hour_cos, month_sin, month_cos, is_weekend,
+    temp_humidity_interaction, occupants_per_area
+]], columns=FEATURES)
 
 col1, col2 = st.columns(2)
 
 with col1:
-    if st.button("🔮 Predict Energy", type="primary", use_container_width=True):
-        retrofit_val = 1 if retrofit == "Yes (Retrofitted)" else 0
-        
-        hour_sin = np.sin(2 * np.pi * hour / 24)
-        hour_cos = np.cos(2 * np.pi * hour / 24)
-        
-        features_df = pd.DataFrame([[
-            temp, humidity, hour, 0, 6, floor_area, occupants, retrofit_val,
-            hour_sin, hour_cos, 0, 0, 0, temp*humidity/100, occupants/floor_area
-        ]], columns=FEATURES)
-        
+    if st.button("🔮 Predict Energy Consumption", type="primary", use_container_width=True):
         prediction = model.predict(features_df)[0]
         
-        st.metric("⚡ Predicted Energy Consumption", f"{prediction:.2f} kWh")
+        st.metric("⚡ Predicted Energy", f"{prediction:.2f} kWh")
         
-        if retrofit == "Yes (Retrofitted)":
-            savings = prediction * 0.15
-            st.success(f"💡 Estimated Savings: {savings:.2f} kWh ({savings/prediction*100:.1f}%)")
+        # ==========================================
+        # BETULKAN SAVINGS: Kira baseline vs retrofit
+        # ==========================================
+        if retrofit == 1:
+            # Kira baseline (seolah-olah tak retrofit)
+            features_baseline = features_df.copy()
+            features_baseline['retrofit'] = 0
+            baseline_pred = model.predict(features_baseline)[0]
+            
+            # Kira savings
+            savings = baseline_pred - prediction
+            savings_pct = (savings / baseline_pred) * 100
+            
+            st.success(f"💡 Retrofit Savings: {savings:.2f} kWh ({savings_pct:.1f}%)")
+            
+            # Optional: Tunjukkan perbandingan
+            with st.expander("📊 View Comparison"):
+                col_a, col_b = st.columns(2)
+                col_a.metric("Baseline (No Retrofit)", f"{baseline_pred:.2f} kWh")
+                col_b.metric("Retrofitted", f"{prediction:.2f} kWh", delta=f"-{savings:.2f} kWh")
+        else:
+            # Kalau retrofit = 0, tunjuk potential savings kalau retrofit
+            features_retrofit = features_df.copy()
+            features_retrofit['retrofit'] = 1
+            retrofit_pred = model.predict(features_retrofit)[0]
+            potential_savings = prediction - retrofit_pred
+            potential_pct = (potential_savings / prediction) * 100
+            
+            st.info(f"💡 If retrofitted: Would save ~{potential_savings:.2f} kWh ({potential_pct:.1f}%)")
+            st.caption("👉 Try selecting 'Yes (Retrofitted)' to see actual savings")
 
 with col2:
     st.info("""
-    **About this Dashboard**
-    - Random Forest model for M&V
-    - Predicts energy consumption
+    **📖 About this M&V System**
+    - Random Forest Regressor model
+    - Trained on residential building data
+    - Predicts hourly energy consumption
     - Estimates retrofit savings
-    - Based on building parameters
     """)
 
 st.markdown("---")
