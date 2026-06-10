@@ -107,6 +107,25 @@ with col2:
     - Predicts hourly energy consumption
     - Estimates retrofit savings
     """)
+    # Dalam dashboard.py, lepas prediction, tambah ni:
+
+if st.button("Predict"):
+    # ... existing code ...
+    
+    # Bar chart comparison
+    import matplotlib.pyplot as plt
+    
+    fig, ax = plt.subplots()
+    bars = ax.bar(['Baseline', 'Retrofitted'], [baseline_pred, prediction], 
+                  color=['red', 'green'])
+    ax.set_ylabel('Energy (kWh)')
+    ax.set_title('Energy Consumption Comparison')
+    
+    for bar, val in zip(bars, [baseline_pred, prediction]):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1, 
+                f'{val:.1f}', ha='center')
+    
+    st.pyplot(fig)
 
 st.markdown("---")
 st.caption("🎓 AI-based Measurement & Verification System | Thesis Project")
